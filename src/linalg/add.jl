@@ -19,7 +19,22 @@ A lazy representation of `A1 + A2 + … + AN`; i.e., a shorthand for `applied(+,
 """
 Add(As...) = applied(+, As...)
 
+const SubOne{Factors<:Tuple{Any}} = Applied{<:Any, typeof(-), Factors}
+const SubTwo{Factors<:Tuple{Any,Any}} = Applied{<:Any, typeof(-), Factors}
 
+"""
+    SubOne(A1)
+
+A lazy representation of `-A1`; i.e., a shorthand for `applied(-, A1)`.
+"""
+SubOne(A1) = applied(-, A1)
+
+"""
+    SubTwo(A1, A2)
+
+A lazy representation of `A1 - A2`; i.e., a shorthand for `applied(-, A1, A2)`.
+"""
+SubTwo(A1, A2) = applied(-, A1, A2)
 
 for op in (:+, :-)
     @eval begin
@@ -36,8 +51,17 @@ end
 getindex(M::Add, k::Integer) = sum(getindex.(M.args, k))
 getindex(M::Add, k::Integer, j::Integer) = sum(getindex.(M.args, k, j))
 
-getindex(M::Add, k::CartesianIndex{1}) = M[convert(Int, k)]
-getindex(M::Add, kj::CartesianIndex{2}) = M[kj[1], kj[2]]
+getindex(M::SubOne, k::Integer) = -getindex(M.args[1], k)
+getindex(M::SubOne, k::Integer, j::Integer) = -getindex(M.args[1], k, j)
+
+getindex(M::SubTwo, k::Integer) = getindex(M.args[1], k) - getindex(M.args[2], k)
+getindex(M::SubTwo, k::Integer, j::Integer) = getindex(M.args[1], k, j) - getindex(M.args[2], k, j)
+
+getindex(M::Union{Add,SubOne,SubTwo}, k::CartesianIndex{1}) = M[convert(Int, k)]
+getindex(M::Union{Add,SubOne,SubTwo}, kj::CartesianIndex{2}) = M[kj[1], kj[2]]
+
+# add methods to Base.iterate
+Base.iterate(A::Union{Add,SubOne,SubTwo}, i=1) = (@inline; (i - 1)%UInt < length(A)%UInt ? (@inbounds A[i], i + 1) : nothing)
 
 for MulAdd_ in [MatMulMatAdd, MatMulVecAdd]
     # `MulAdd{ApplyLayout{typeof(+)}}` cannot "win" against

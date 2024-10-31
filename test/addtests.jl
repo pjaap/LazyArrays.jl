@@ -2,7 +2,7 @@ module AddTests
 
 using LazyArrays, Test
 using LinearAlgebra
-import LazyArrays: Add, AddArray, MulAdd, materialize!, MemoryLayout, ApplyLayout, simplifiable, simplify
+import LazyArrays: Add, AddArray, MulAdd, materialize!, MemoryLayout, ApplyLayout, simplifiable, simplify, SubOne, SubTwo
 
 @testset "Add/Subtract" begin
     @testset "Add" begin
@@ -12,6 +12,12 @@ import LazyArrays: Add, AddArray, MulAdd, materialize!, MemoryLayout, ApplyLayou
             c = similar(b)
             fill!(c,NaN)
             @test (c .= @~ A*b) ≈ A.args[1]*b + A.args[2]*b
+        end
+
+        @testset "Norm Add" begin
+            A = randn(5,5)
+            B = randn(5,5)
+            @test norm( @~ A+B ) ≈ norm( A+B )
         end
 
         @testset "gemv Float64" begin
@@ -109,12 +115,31 @@ import LazyArrays: Add, AddArray, MulAdd, materialize!, MemoryLayout, ApplyLayou
     end
 
     @testset "Subtract" begin
-        @testset "Mul-Subtract" begin
-            A = applied(-, randn(5,5), randn(5,5))
+        @testset "SubTwo" begin
+            A = SubTwo(randn(5,5), randn(5,5))
             b = randn(5)
             c = similar(b)
             fill!(c,NaN)
             @test (c .= @~ A*b) ≈ A.args[1]*b - A.args[2]*b
+        end
+
+        @testset "SubOne" begin
+            A = SubOne(randn(5,5))
+            b = randn(5)
+            c = similar(b)
+            fill!(c,NaN)
+            @test (c .= @~ A*b) ≈ -A.args[1]*b
+        end
+
+        @testset "Norm SubOne" begin
+            A = randn(5,5)
+            @test norm( @~ -A ) ≈ norm( -A )
+        end
+
+        @testset "Norm SubTwo" begin
+            A = randn(5,5)
+            B = randn(5,5)
+            @test norm( @~ A-B ) ≈ norm( A-B )
         end
 
         @testset "gemv Float64" begin
